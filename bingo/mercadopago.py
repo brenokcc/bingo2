@@ -44,9 +44,9 @@ class MercadoPago():
             data = dict(status=status, identifier=identifier, qrcode=qrcode, url=url)
             return data
 
-    def consultar_pagamento_pix(self, identificador):
+    def consultar_pagamento_pix(self, identificador, data_hora):
         if settings.MOCK:
-            return 'approved'
+            return 'approved' if datetime.now().minute > data_hora.minute else 'pending'
         else:
             sdk = mercadopago.SDK(self.token)
             api = sdk.payment()

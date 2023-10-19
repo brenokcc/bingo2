@@ -248,6 +248,7 @@ class CompraOnline(models.Model):
     numero_cartelas = models.IntegerField('Número de Cartelas', default=1)
     valor = models.DecimalField('Valor', decimal_places=2, max_digits=9)
     cartelas = models.ManyToManyField(Cartela, verbose_name='Cartelas', blank=True)
+    data_hora = models.DateTimeField(verbose_name='Data/Hora', auto_now_add=True)
 
     uuid = models.CharField('UUID', max_length=100)
     status = models.CharField('Status', max_length=25)
@@ -274,16 +275,28 @@ class CompraOnline(models.Model):
             self.url = dados['url']
         super().save(*args, **kwargs)
 
-    def get_imagem_qrcode(self):
+    def is_confirmada(self):
+        return self.status == 'approved'
+
+    def get_qrcode(self):
         return QrCode(self.qrcode)
 
     def get_link_pagamento(self):
         return Link(self.url)
 
     def get_status(self):
-        return Status('warning', self.status)
+        if self.is_confirmada():
+            return Status('success', 'Confirmada')
+        else:
+            return Status('warning', 'Pendente')
+
+    def get_status_atual(self):
+        if not self.is_confirmada():
+            self.status = MercadoPago().consultar_pagamento_pix(self.identifier, self.data_hora)
+            self.save()
+        return self.get_status()
 
     def __str__(self):
-        return 'Compra #{} - {}'.format(self.id, self.nome)
+        return 'Compra {}'.format(self.uuid)
 
 

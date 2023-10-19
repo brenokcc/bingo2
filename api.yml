@@ -97,10 +97,10 @@ api:
     bingo.compraonline:
       icon: cart-plus
       fieldsets:
-        dados_gerais: cpf, nome, telefone, email, numero_cartelas, get_status
+        dados_gerais: cpf, nome, telefone, email, data_hora, numero_cartelas, valor, uuid, get_status
       endpoints:
-        list: cpf, nome, telefone, email, numero_cartelas
+        list: cpf, nome, telefone, email, data_hora, numero_cartelas, valor, get_status
         add:
           fields: cpf, nome, telefone, email, numero_cartelas
-        view: dados_gerais, get_imagem_qrcode, get_link_pagamento
+        view: dados_gerais, get_qrcode, get_link_pagamento
 
