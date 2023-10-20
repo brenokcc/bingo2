@@ -126,3 +126,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 from api.conf import *
 
 MOCK = True
+DEFAULT_PASSWORD = lambda user: '123'

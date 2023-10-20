@@ -40,7 +40,7 @@ class Pessoa(models.Model):
         verbose_name_plural = 'Pessoas'
 
     def __str__(self):
-        return self.nome
+        return '{} ({})'.format(self.nome, self.cpf) if self.cpf else self.nome
 
     def get_cartelas(self):
         qs = Cartela.objects

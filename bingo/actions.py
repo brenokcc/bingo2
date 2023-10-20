@@ -6,7 +6,8 @@ from .models import Evento, Cartela, CompraOnline
 class AcessoRapido(actions.ActionView):
     def view(self):
         boxes = Boxes(title='Acesso Rápido')
-        boxes.append(icon='dollar', label='Meios de Pagamento', url='/api/v1/meiopagamento/')
+        if self.requires('adm'):
+            boxes.append(icon='dollar', label='Meios de Pagamento', url='/api/v1/meiopagamento/')
         boxes.append(icon='users', label='Pessoas', url='/api/v1/pessoa/')
         boxes.append(icon='calendar', label='Eventos', url='/api/v1/evento/')
         boxes.append(icon='cart-plus', label='Compras Online', url='/api/v1/compraonline/')
@@ -43,6 +44,7 @@ class VisualizarCompraOnline(actions.ActionView):
 
     class Meta:
         icon = 'search'
+        help_text = 'Efetue o pagamento utilizando o Qrcode abaixo caso o pagamento esteja com a situação "Pendente"'
 
     def view(self):
         compra = CompraOnline.objects.get(uuid=self.request.GET.get('uuid'))
@@ -70,6 +72,9 @@ class ConsultarCompraOnline(actions.ActionView):
 class Dashboard(actions.ActionSet):
     actions = AcessoRapido,
 
+    def has_permission(self):
+        return self.user.is_authenticated
+
 
 class Index(actions.ActionSet):
     actions = ConsultarCompraOnline, RealizarCompraOnline
@@ -80,7 +85,7 @@ class Index(actions.ActionSet):
 
 class Distribuir(actions.Action):
 
-    aplicar_talao = actions.BooleanField(label='Aplicar em todo o talão?', default=False, required=False)
+    aplicar_talao = actions.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
 
     class Meta:
         title = 'Distribuir'
@@ -96,11 +101,11 @@ class Distribuir(actions.Action):
         ) if self.get('aplicar_talao') else super().submit()
 
     def has_permission(self):
-        return True
+        return self.instance.responsavel is None and self.requires('adm', 'op')
 
 
 class DevolverCartela(actions.Action):
-    aplicar_talao = actions.BooleanField(label='Aplicar em todo o talão?', default=False, required=False)
+    aplicar_talao = actions.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
 
     class Meta:
         title = 'Devolver'
@@ -114,19 +119,17 @@ class DevolverCartela(actions.Action):
         self.instance.realizou_pagamento = None
         self.instance.meio_pagamento = None
         self.instance.comissao = 0
+        self.instance.save()
         self.instance.talao.cartela_set.update(
-            responsavel=self.instance.responsavel, posse=self.instance.posse,
-            realizou_pagamento=self.instance.realizou_pagamento,
-            meio_pagamento=self.instance.meio_pagamento,
-            comissao=self.instance.comissao
+            responsavel=None, posse=None, realizou_pagamento=None, meio_pagamento=None, comissao=0
         ) if self.get('aplicar_talao') else super().submit()
 
     def has_permission(self):
-        return True
+        return self.instance.responsavel and self.instance.realizou_pagamento is None and self.requires('adm', 'op')
 
 
 class InformarPosseCartela(actions.Action):
-    aplicar_talao = actions.BooleanField(label='Aplicar em todo o talão?', default=False, required=False)
+    aplicar_talao = actions.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
 
     class Meta:
         title = 'Repassar'
@@ -141,11 +144,11 @@ class InformarPosseCartela(actions.Action):
         ) if self.get('aplicar_talao') else super().submit()
 
     def has_permission(self):
-        return True
+        return self.instance.responsavel and self.instance.realizou_pagamento is None and self.requires('adm', 'op')
 
 
 class PrestarConta(actions.Action):
-    aplicar_talao = actions.BooleanField(label='Aplicar em todo o talão?', default=False, required=False)
+    aplicar_talao = actions.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
 
     class Meta:
         title = 'Prestar Contas'
@@ -155,7 +158,7 @@ class PrestarConta(actions.Action):
         fields = 'realizou_pagamento', 'meio_pagamento', 'comissao', 'aplicar_talao',
 
     def submit(self):
-        if not self.instance.realizou_pagamento:
+        if not self.get('realizou_pagamento'):
             self.instance.meio_pagamento = None
             self.instance.comissao = 0
         self.instance.talao.cartela_set.update(
@@ -163,6 +166,7 @@ class PrestarConta(actions.Action):
             meio_pagamento=self.instance.meio_pagamento,
             comissao=self.instance.comissao
         ) if self.get('aplicar_talao') else super().submit()
+        print(self.instance.meio_pagamento, 999, self.get('realizou_pagamento'))
 
     def on_realizou_pagamento_change(self, realizou_pagamento=None, **kwargs):
         self.show('comissao', 'meio_pagamento') if realizou_pagamento else self.hide('comissao', 'meio_pagamento')
@@ -179,7 +183,7 @@ class PrestarConta(actions.Action):
         return 0
 
     def has_permission(self):
-        return True
+        return self.instance.responsavel and self.requires('adm', 'op')
 
 
 class ExportarCartelasExcel(actions.QuerySetAction):

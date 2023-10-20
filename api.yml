@@ -41,7 +41,7 @@ api:
         add:
           fields: first_name, last_name, username
         list:
-          fields: id, dados_gerais, dados_acesso
+          fields: id, username, email, api.actions.userroles
           actions: add, view, edit, delete, api.actions.changepassword, api.actions.changepasswords
           extends:
             active:
@@ -50,8 +50,6 @@ api:
         view:
           fields: id, dados_gerais, dados_acesso, api.actions.userroles
           actions: api.actions.verifypassword, api.actions.changepassword
-          extends:
-            info: dados_gerais
     api.role:
       prefix: roles
       endpoints:
@@ -59,8 +57,19 @@ api:
           fields: id, name
           actions: view, edit
     bingo.meiopagamento:
+      requires:
+        adm:
     bingo.administrador:
+      roles:
+        adm:
+          username: pessoa__cpf
+          email: pessoa__email
+      requires:
+        adm:
     bingo.pessoa:
+      requires:
+        adm:
+        op:
       fieldsets:
         dados_gerais: nome, cpf, telefone, observacao
       relations:
@@ -73,6 +82,10 @@ api:
       endpoints:
         view: dados_gerais, get_cartelas
     bingo.evento:
+      roles:
+        op:
+          username: operadores__cpf
+          email: operadores__email
       fieldsets:
         dados_gerais: nome, data, operadores
         configuracao: qtd_cartela_talao, qtd_taloes, valor_venda_cartela, valor_comissao_cartela
@@ -87,11 +100,27 @@ api:
           actions: bingo.actions.distribuir, bingo.actions.informarpossecartela, bingo.actions.devolvercartela, bingo.actions.prestarconta
       endpoints:
         list:
+          requires:
+            adm:
+            op: operadores__cpf
           calendar: data
           fields: nome, data, operadores
-        view: dados_gerais, configuracao, get_percentual_cartela_distribuida, get_percentual_cartela_paga, get_cartelas, resumo_financeiro
-        edit: nome, data, operadores
+        view:
+          requires:
+            adm:
+            op: operadores__cpf
+          fields: dados_gerais, configuracao, get_percentual_cartela_distribuida, get_percentual_cartela_paga, get_cartelas, resumo_financeiro
+        add:
+          requires:
+            adm:
+          fields: nome, data, operadores
+        edit:
+          requires:
+            adm:
+          fields: nome, data, operadores
         delete:
+          requires:
+            adm:
     bingo.cartela:
       actions: bingo.actions.distribuir, bingo.actions.informarpossecartela, bingo.actions.devolvercartela, bingo.actions.prestarconta
     bingo.compraonline:
@@ -99,8 +128,18 @@ api:
       fieldsets:
         dados_gerais: cpf, nome, telefone, email, data_hora, numero_cartelas, valor, uuid, get_status
       endpoints:
-        list: cpf, nome, telefone, email, data_hora, numero_cartelas, valor, get_status
+        list:
+          requires:
+            adm:
+            op:
+          fields: cpf, nome, telefone, email, data_hora, numero_cartelas, valor, get_status
         add:
+          requires:
+            adm:
           fields: cpf, nome, telefone, email, numero_cartelas
-        view: dados_gerais, get_qrcode, get_link_pagamento
+        view:
+          requires:
+            adm:
+            op:
+          fields: dados_gerais, get_qrcode, get_link_pagamento
 
