@@ -1,3 +1,5 @@
+bingo.json
+.deploy
 bin/server.log
 .idea/
 db.sqlite3

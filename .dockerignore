@@ -3,13 +3,15 @@
 .git
 .gitignore
 .dockerignore
+.deploy
 docker-compose.yml
 Dockerfile
 static
 media
+*.json
 *.pyc
 *.sqlite3
 *.md
 local_settings.py
-.steps/
+.steps
 geckodriver.log

@@ -7,10 +7,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: web
     restart: always
     volumes:
-      - .docker/media:/opt/app/media
-      - ./static:/opt/app/static
+      - .deploy/media:/opt/app/media
+      - .deploy/static:/opt/app/static
     depends_on:
       postgres:
         condition: service_healthy
@@ -26,7 +27,7 @@ services:
       - "6379"
     command: redis-server --loglevel warning
     volumes:
-      - .docker/redis:/data
+      - .deploy/redis:/data
   postgres:
     image: postgres
     hostname: postgres
@@ -36,7 +37,7 @@ services:
     ports:
       - "5432"
     volumes:
-      - .docker/postgres:/var/lib/postgresql/data
+      - .deploy/postgres:/var/lib/postgresql/data
     healthcheck:
       test: psql -U postgres -d $$POSTGRES_DB -c "SELECT version();"
   weasyprint:
