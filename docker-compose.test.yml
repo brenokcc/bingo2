@@ -10,7 +10,7 @@ services:
     command: redis-server --loglevel warning
     healthcheck:
       test: redis-server --version
-  test:
+  web:
     depends_on:
       redis:
         condition: service_healthy
