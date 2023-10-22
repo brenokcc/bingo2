@@ -17,4 +17,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: test
+    volumes:
+      - .git:/opt/git
+    environment:
+      BRANCH: ${TEST_BRANCH}

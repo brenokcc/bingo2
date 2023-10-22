@@ -10,4 +10,4 @@ FROM yml-api-test as test
 WORKDIR /opt/app
 RUN pip install mercadopago
 ADD . .
-ENTRYPOINT ["python", "manage.py", "test"]
+ENTRYPOINT ["sh", "-c", "cp -r /opt/git .git && git pull origin $BRANCH && python manage.py test"]
