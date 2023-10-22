@@ -3,6 +3,7 @@ from api.components import Progress, Status, QrCode, Link
 from uuid import uuid1
 from .mercadopago import MercadoPago
 
+
 class MeioPagamentoManager(models.Manager):
     pass
 
