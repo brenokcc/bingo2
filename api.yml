@@ -114,7 +114,10 @@ api:
         add:
           requires:
             adm:
-          fields: nome, data, operadores
+          fieldsets:
+            dados_gerais: nome, data
+            detalhamento: qtd_taloes, qtd_cartela_talao, valor_venda_cartela, valor_comissao_cartela
+            gerenciamento: operadores
         edit:
           requires:
             adm:
