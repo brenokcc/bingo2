@@ -17,7 +17,7 @@ api:
     success: 1351b4
     warning: fff5c2
     danger: e52207
-    radius: 5px;
+    radius: 5px
   index: bingo.actions.index
   dashboard: bingo.actions.dashboard
   groups:
