@@ -3,7 +3,7 @@ api:
   lang: pt-br
   title: Bingo Online
   subtitle: Sistema de Gerenciamento de Cartelas
-  icon: /static/images/bingo2.svg
+  icon: /static/images/icon2.png
   logo: /static/images/bingo.svg
   footer:
     logo: /static/images/bingo2.svg
@@ -17,6 +17,7 @@ api:
     success: 1351b4
     warning: fff5c2
     danger: e52207
+    radius: 5px;
   index: bingo.actions.index
   dashboard: bingo.actions.dashboard
   groups:
