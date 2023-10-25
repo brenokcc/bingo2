@@ -261,7 +261,7 @@ class CompraOnline(models.Model):
 
     uuid = models.CharField('UUID', max_length=100)
     status = models.CharField('Status', max_length=25)
-    url = models.CharField('URL', max_length=25)
+    url = models.CharField('URL', max_length=255)
 
     objects = CompraOnlineManager()
 

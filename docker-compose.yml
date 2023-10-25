@@ -19,6 +19,8 @@ services:
       REDIS_HOST: redis
       POSTGRES_HOST: postgres
       WEASYPRINT_HOST: weasyprint
+    env_file:
+      .env
   redis:
     image: redis
     hostname: redis
