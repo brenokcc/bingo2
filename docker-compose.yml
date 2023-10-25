@@ -20,6 +20,7 @@ services:
       POSTGRES_HOST: postgres
       WEASYPRINT_HOST: weasyprint
       TOKEN_MERCADO_PAGO: ${TOKEN_MERCADO_PAGO}
+      SITE_URL: https://bingo2.cloud.aplicativo.click
   redis:
     image: redis
     hostname: redis
