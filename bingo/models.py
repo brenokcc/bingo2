@@ -1,3 +1,4 @@
+import os
 from django.db import models
 from api.components import Progress, Status, QrCode, Link
 from .mercadopago import MercadoPago
@@ -276,7 +277,9 @@ class CompraOnline(models.Model):
             self.uuid = uuid1().hex
             descricao = 'Compra de cartelas ({})'.format(self.numero_cartelas)
             self.valor = self.numero_cartelas * self.evento.valor_venda_cartela
-            callback = '/api/v1/visualizar_compra_online/?uuid={}'.format(self.uuid)
+            callback = '{}/api/v1/visualizar_compra_online/?uuid={}'.format(
+                os.environ.get('SITE_URL', 'http://localhost:8000'), self.uuid
+            )
             dados = MercadoPago().realizar_checkout_pro(
                 self.nome, self.cpf, descricao, self.valor, self.email, self.uuid, callback
             )
