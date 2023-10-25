@@ -1,7 +1,7 @@
 from django.db import models
 from api.components import Progress, Status, QrCode, Link
-from uuid import uuid1
 from .mercadopago import MercadoPago
+from uuid import uuid1
 
 
 class MeioPagamentoManager(models.Manager):
@@ -24,7 +24,7 @@ class MeioPagamento(models.Model):
         return user.is_superuser or user.roles.contains('adm')
 
 
-class PessoaManager(models.Manager):
+class PessoaManager(models.QuerySet):
     pass
 
 
@@ -34,7 +34,7 @@ class Pessoa(models.Model):
     telefone = models.CharField('Telefone', null=True, blank=True, max_length=255)
     observacao = models.TextField('Observação', null=True, blank=True)
 
-    objects = PessoaManager()
+    objects = PessoaManager().as_manager()
 
     class Meta:
         verbose_name = 'Pessoa'
@@ -146,6 +146,14 @@ class Evento(models.Model):
                 numero_cartela += 1
             numero_talao += 1
 
+    def gerar_cartelas_online(self, numero_cartelas):
+        cartelas = []
+        talao = Talao.objects.get_or_create(numero='000', evento=self)[0]
+        total = talao.cartela_set.count()
+        for numero_cartela in range(total, total+numero_cartelas):
+            cartelas.append(Cartela.objects.create(numero=f'{numero_cartela+1}'.rjust(5, '0'), talao=talao))
+        return cartelas
+
 
 class TalaoManager(models.Manager):
     pass
@@ -246,15 +254,13 @@ class CompraOnline(models.Model):
     telefone = models.CharField('Telefone', null=True, blank=True, max_length=255)
     email = models.CharField('E-mail', null=True, blank=True, max_length=255)
     evento = models.ForeignKey(Evento, on_delete=models.CASCADE)
-    numero_cartelas = models.IntegerField('Número de Cartelas', default=1)
     valor = models.DecimalField('Valor', decimal_places=2, max_digits=9)
+    numero_cartelas = models.IntegerField('Número de Cartelas', default=1)
     cartelas = models.ManyToManyField(Cartela, verbose_name='Cartelas', blank=True)
     data_hora = models.DateTimeField(verbose_name='Data/Hora', auto_now_add=True)
 
     uuid = models.CharField('UUID', max_length=100)
     status = models.CharField('Status', max_length=25)
-    identifier = models.CharField('Identifier', max_length=25)
-    qrcode = models.TextField('QrCode')
     url = models.CharField('URL', max_length=25)
 
     objects = CompraOnlineManager()
@@ -264,23 +270,22 @@ class CompraOnline(models.Model):
         verbose_name_plural = 'Compras Online'
 
     def save(self, *args, **kwargs):
-        if self.pk is None:
-            self.uuid = uuid1().hex
+        pk = self.pk
+        if pk is None:
             self.evento = Evento.objects.order_by('id').last()
+            self.uuid = uuid1().hex
             descricao = 'Compra de cartelas ({})'.format(self.numero_cartelas)
             self.valor = self.numero_cartelas * self.evento.valor_venda_cartela
-            dados = MercadoPago().realizar_cobranca_pix(self.nome, self.cpf, descricao, self.valor, self.email)
-            self.status = dados['status']
-            self.identifier = dados['identifier']
-            self.qrcode = dados['qrcode']
+            callback = '/api/v1/visualizar_compra_online/?uuid={}'.format(self.uuid)
+            dados = MercadoPago().realizar_checkout_pro(
+                self.nome, self.cpf, descricao, self.valor, self.email, self.uuid, callback
+            )
+            self.uuid = dados['ref']
             self.url = dados['url']
         super().save(*args, **kwargs)
 
     def is_confirmada(self):
         return self.status == 'approved'
-
-    def get_qrcode(self):
-        return QrCode(self.qrcode)
 
     def get_link_pagamento(self):
         return Link(self.url)
@@ -291,11 +296,27 @@ class CompraOnline(models.Model):
         else:
             return Status('warning', 'Pendente')
 
+    def atualizar_situacao(self):
+        if not self.is_confirmada():
+            self.status = MercadoPago().consultar_pagamento(self.uuid, self.data_hora)
+            self.save()
+        if self.is_confirmada() and not self.cartelas.exists():
+            evento = Evento.objects.order_by('data').last()
+            self.cartelas.set(evento.gerar_cartelas_online(self.numero_cartelas))
+            pessoa = Pessoa.objects.get_or_create(cpf='000.000.000-00', nome='Compra Online')[0]
+            meio_pagamento = MeioPagamento.objects.get_or_create(nome='Mercado Pago')[0]
+            self.cartelas.update(responsavel=pessoa, meio_pagamento=meio_pagamento, realizou_pagamento=True, comissao=0)
+
     def get_status_atual(self):
         if not self.is_confirmada():
-            self.status = MercadoPago().consultar_pagamento_pix(self.identifier, self.data_hora)
-            self.save()
+            self.atualizar_situacao()
         return self.get_status()
+
+    def get_numeros_cartelas(self):
+        return ', '.join(self.cartelas.values_list('numero', flat=True))
+
+    def get_cartelas(self):
+        return self.cartelas.fields('id', 'numero', 'meio_pagamento')
 
     def __str__(self):
         return 'Compra {}'.format(self.uuid)

@@ -1,7 +1,7 @@
 api:
   app: true
   lang: pt-br
-  title: Bingo Online
+  title: Sorteio Online
   subtitle: Sistema de Gerenciamento de Cartelas
   icon: /static/images/icon2.png
   logo: /static/images/bingo.svg
@@ -88,7 +88,7 @@ api:
           username: operadores__cpf
           email: operadores__email
       fieldsets:
-        dados_gerais: nome, data, operadores
+        dados_gerais: nome, data
         configuracao: qtd_cartela_talao, qtd_taloes, valor_venda_cartela, valor_comissao_cartela
         resumo_financeiro: get_total_cartelas_distribuidas, get_receita_esperada, get_valor_recebido_venda, get_valor_recebido_doacao, get_valor_receber, get_valor_perdido, get_receita_final
       relations:
@@ -130,13 +130,14 @@ api:
     bingo.compraonline:
       icon: cart-plus
       fieldsets:
-        dados_gerais: cpf, nome, telefone, email, data_hora, numero_cartelas, valor, uuid, get_status
+        dados_gerais: cpf, nome, telefone, email, data_hora, valor, uuid, get_status
       endpoints:
         list:
           requires:
             adm:
             op:
-          fields: cpf, nome, telefone, email, data_hora, numero_cartelas, valor, get_status
+          fields: cpf, nome, telefone, email, data_hora, valor, get_status, get_numeros_cartelas
+          actions: view, bingo.actions.atualizarsituacao, bingo.actions.efetuarpagamentoonline
         add:
           requires:
             adm:
@@ -145,5 +146,5 @@ api:
           requires:
             adm:
             op:
-          fields: dados_gerais, get_qrcode, get_link_pagamento
+          fields: dados_gerais, get_link_pagamento, get_cartelas
 

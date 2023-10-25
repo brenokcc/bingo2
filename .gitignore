@@ -17,4 +17,4 @@ geckodriver.log
 .docker
 media
 local_settings.py
-.static/
+static/

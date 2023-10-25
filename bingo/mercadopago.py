@@ -7,11 +7,12 @@ from django.conf import settings
 
 class MercadoPago():
     def __init__(self):
+        self.mock = False
         self.token = os.environ.get('TOKEN_MERCADO_PAGO')
 
     def realizar_cobranca_pix(self, nome, cpf, descricao, valor, email):
         data = {
-            "transaction_amount": 1.0 if settings.MOCK else float(valor),
+            "transaction_amount": 1.0 if self.mock else float(valor),
             "description": descricao,
             "payment_method_id": "pix",
             "payer": {
@@ -24,7 +25,7 @@ class MercadoPago():
                 }
             }
         }
-        if settings.MOCK:
+        if self.mock:
             data = dict(
                 identifier='24767778610',
                 qrcode='00020126330014br.gov.bcb.pix0111+843272389852040000530398654041.005802BR5908BRENOKCC6010Parnamirim62240520mpqrinter2476777861063043628',
@@ -45,10 +46,57 @@ class MercadoPago():
             return data
 
     def consultar_pagamento_pix(self, identificador, data_hora):
-        if settings.MOCK:
+        if self.mock:
             return 'approved' if datetime.now().minute > data_hora.minute else 'pending'
         else:
             sdk = mercadopago.SDK(self.token)
             api = sdk.payment()
             status = api.get(identificador)['response']['status']
             return status
+
+    def consultar_pagamento(self, referencia, data_hora):
+        if self.mock:
+            return 'approved' if datetime.now().minute > data_hora.minute else 'pending'
+        else:
+            sdk = mercadopago.SDK(self.token)
+            api = sdk.payment()
+            filters = dict(sort='date_created', criteria='desc', external_reference=referencia, range='date_created', begin_date='NOW-2DAYS', end_date='NOW')
+            dados = api.search(filters=filters)
+            for resultado in dados['response']['results']:
+                return resultado['status']
+
+    def realizar_checkout_pro(self, nome, cpf, descricao, valor, email, ref, callback):
+        if self.mock:
+            return dict(ref=ref, url='https://mercadopago.com.br')
+        preference_data = {
+            "items": [
+                {
+                    "title": nome,
+                    "currency_id": "BRL",
+                    "description": descricao,
+                    "quantity": 1,
+                    "unit_price": float(valor)
+                }
+            ],
+            "payer": {
+                "name": nome,
+                "email": email,
+                "identification": {
+                    "type": "CPF",
+                    "number": cpf.replace('.', '').replace('-', '')
+                }
+            },
+            "back_urls": {
+                "success": callback,
+                "failure": callback,
+                "pending": callback
+            },
+            "auto_return": "approved",
+            "statement_descriptor": "Pagamento Online",
+            "external_reference": ref,
+        }
+
+        sdk = mercadopago.SDK(self.token)
+        preference_response = sdk.preference().create(preference_data)
+        preference = preference_response["response"]
+        return dict(ref=ref, url=preference['init_point'])
