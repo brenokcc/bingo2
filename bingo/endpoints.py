@@ -1,11 +1,12 @@
-from api import actions
+from api import endpoints
 from api.components import Boxes
 from .models import Evento, Cartela, CompraOnline
 from .mercadopago import MercadoPago
+from . import tasks
 
 
-class AcessoRapido(actions.ActionView):
-    def view(self):
+class AcessoRapido(endpoints.Endpoint):
+    def get(self):
         boxes = Boxes(title='Acesso Rápido')
         if self.check('adm'):
             boxes.append(icon='dollar', label='Meios de Pagamento', url='/api/v1/meiopagamento/')
@@ -18,12 +19,12 @@ class AcessoRapido(actions.ActionView):
         return self.user.is_authenticated
 
 
-class RealizarCompraOnline(actions.ActionView):
-    nome = actions.CharField(label='Nome')
-    cpf = actions.CharField(label='CPF')
-    email = actions.CharField(label='E-mail')
-    telefone = actions.CharField(label='Telefone', required=False)
-    numero_cartelas = actions.IntegerField(label='Número de Cartelas')
+class RealizarCompraOnline(endpoints.Endpoint):
+    nome = endpoints.CharField(label='Nome')
+    cpf = endpoints.CharField(label='CPF')
+    email = endpoints.CharField(label='E-mail')
+    telefone = endpoints.CharField(label='Telefone', required=False)
+    numero_cartelas = endpoints.IntegerField(label='Número de Cartelas')
 
     class Meta:
         title = 'Realizar Compra Online'
@@ -32,8 +33,8 @@ class RealizarCompraOnline(actions.ActionView):
 
     def submit(self):
         compra = CompraOnline.objects.create(
-            cpf=self.get('cpf'), nome=self.get('nome'), telefone=self.get('telefone'),
-            email=self.get('email'), numero_cartelas = self.get('numero_cartelas')
+            cpf=self.getdata('cpf'), nome=self.getdata('nome'), telefone=self.getdata('telefone'),
+            email=self.getdata('email'), numero_cartelas = self.getdata('numero_cartelas')
         )
         self.redirect(compra.url)
 
@@ -42,14 +43,14 @@ class RealizarCompraOnline(actions.ActionView):
         return True
 
 
-class VisualizarCompraOnline(actions.ActionView):
+class VisualizarCompraOnline(endpoints.Endpoint):
 
     class Meta:
         icon = 'search'
         title = 'Visualizar Compra Online'
 
-    def view(self):
-        compra = CompraOnline.objects.get(uuid=self.request.GET.get('uuid'))
+    def get(self):
+        compra = CompraOnline.objects.getdata(uuid=self.request.GET.getdata('uuid'))
         autoreload = None if compra.is_confirmada() else 30
         return compra.valueset(
             'cpf', 'nome', 'data_hora', 'valor', 'get_status_atual', 'get_cartelas',
@@ -60,15 +61,15 @@ class VisualizarCompraOnline(actions.ActionView):
         return True
 
 
-class ConsultarCompraOnline(actions.ActionView):
-    cpf = actions.CharField(label='CPF')
+class ConsultarCompraOnline(endpoints.Endpoint):
+    cpf = endpoints.CharField(label='CPF')
 
     class Meta:
         icon = 'search'
         title = 'Consultar Compra Online'
 
-    def view(self):
-        return self.objects('bingo.compraonline').filter(cpf=self.get('cpf')).fields(
+    def get(self):
+        return self.objects('bingo.compraonline').filter(cpf=self.getdata('cpf')).fields(
             'cpf', 'nome', 'data_hora', 'valor', 'get_numeros_cartelas', 'get_status'
         )
 
@@ -76,23 +77,36 @@ class ConsultarCompraOnline(actions.ActionView):
         return True
 
 
-class Dashboard(actions.ActionSet):
-    actions = AcessoRapido,
+class Dashboard(endpoints.EndpointSet):
+    endpoints = AcessoRapido,
 
     def has_permission(self):
         return self.user.is_authenticated
 
 
-class Index(actions.ActionSet):
-    actions = ConsultarCompraOnline, RealizarCompraOnline
+class Index(endpoints.EndpointSet):
+    endpoints = ConsultarCompraOnline, RealizarCompraOnline
 
     def has_permission(self):
         return True
 
 
-class Distribuir(actions.Action):
+class GerarCartelas(endpoints.Endpoint):
 
-    aplicar_talao = actions.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
+    class Meta:
+        target = 'instance'
+
+    def post(self):
+        self.execute(tasks.GerarCartelas(self.instance))
+        self.notify('Cartelas geradas com sucesso')
+
+    def has_permission(self):
+        return self.check('adm') and not self.instance.talao_set.exists()
+
+
+class Distribuir(endpoints.Endpoint):
+
+    aplicar_talao = endpoints.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
 
     class Meta:
         title = 'Distribuir'
@@ -105,14 +119,14 @@ class Distribuir(actions.Action):
     def submit(self):
         self.instance.talao.cartela_set.update(
             responsavel=self.instance.responsavel
-        ) if self.get('aplicar_talao') else super().submit()
+        ) if self.getdata('aplicar_talao') else super().submit()
 
     def has_permission(self):
         return self.instance.responsavel is None and self.check('adm', 'op')
 
 
-class DevolverCartela(actions.Action):
-    aplicar_talao = actions.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
+class DevolverCartela(endpoints.Endpoint):
+    aplicar_talao = endpoints.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
 
     class Meta:
         title = 'Devolver'
@@ -129,14 +143,14 @@ class DevolverCartela(actions.Action):
         self.instance.save()
         self.instance.talao.cartela_set.update(
             responsavel=None, posse=None, realizou_pagamento=None, meio_pagamento=None, comissao=0
-        ) if self.get('aplicar_talao') else super().submit()
+        ) if self.getdata('aplicar_talao') else super().submit()
 
     def has_permission(self):
         return self.instance.responsavel and self.instance.realizou_pagamento is None and self.check('adm', 'op')
 
 
-class InformarPosseCartela(actions.Action):
-    aplicar_talao = actions.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
+class InformarPosseCartela(endpoints.Endpoint):
+    aplicar_talao = endpoints.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
 
     class Meta:
         title = 'Repassar'
@@ -148,14 +162,14 @@ class InformarPosseCartela(actions.Action):
     def submit(self):
         self.instance.talao.cartela_set.update(
             posse=self.instance.posse
-        ) if self.get('aplicar_talao') else super().submit()
+        ) if self.getdata('aplicar_talao') else super().submit()
 
     def has_permission(self):
         return self.instance.responsavel and self.instance.realizou_pagamento is None and self.check('adm', 'op')
 
 
-class PrestarConta(actions.Action):
-    aplicar_talao = actions.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
+class PrestarConta(endpoints.Endpoint):
+    aplicar_talao = endpoints.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
 
     class Meta:
         title = 'Prestar Contas'
@@ -165,35 +179,34 @@ class PrestarConta(actions.Action):
         fields = 'realizou_pagamento', 'meio_pagamento', 'comissao', 'aplicar_talao',
 
     def submit(self):
-        if not self.get('realizou_pagamento'):
+        if not self.getdata('realizou_pagamento'):
             self.instance.meio_pagamento = None
             self.instance.comissao = 0
         self.instance.talao.cartela_set.update(
             realizou_pagamento=self.instance.realizou_pagamento,
             meio_pagamento=self.instance.meio_pagamento,
             comissao=self.instance.comissao
-        ) if self.get('aplicar_talao') else super().submit()
-        print(self.instance.meio_pagamento, 999, self.get('realizou_pagamento'))
+        ) if self.getdata('aplicar_talao') else super().submit()
 
     def on_realizou_pagamento_change(self, realizou_pagamento=None, **kwargs):
         self.show('comissao', 'meio_pagamento') if realizou_pagamento else self.hide('comissao', 'meio_pagamento')
 
     def validate_comissao(self, comissao):
-        if self.get('realizou_pagamento') is None:
+        if self.getdata('realizou_pagamento') is None:
             return 0
-        if self.get('realizou_pagamento'):
-            if self.get('comissao') is None:
-                raise actions.ValidationError('Informe a comissão')
-            if self.get('comissao') > self.instance.talao.evento.valor_comissao_cartela:
-                raise actions.ValidationError('Valor não pode ser superior a {}'.format(self.instance.talao.evento.valor_comissao_cartela))
-            return self.get('comissao')
+        if self.getdata('realizou_pagamento'):
+            if self.getdata('comissao') is None:
+                raise endpoints.ValidationError('Informe a comissão')
+            if self.getdata('comissao') > self.instance.talao.evento.valor_comissao_cartela:
+                raise endpoints.ValidationError('Valor não pode ser superior a {}'.format(self.instance.talao.evento.valor_comissao_cartela))
+            return self.getdata('comissao')
         return 0
 
     def has_permission(self):
         return self.instance.responsavel and self.check('adm', 'op')
 
 
-class ExportarCartelasExcel(actions.QuerySetAction):
+class ExportarCartelasExcel(endpoints.Endpoint):
     class Meta:
         title = 'Exportar para Excel'
         modal = True
@@ -213,24 +226,7 @@ class ExportarCartelasExcel(actions.QuerySetAction):
         return True
 
 
-class GerarMaisCartelas(actions.Action):
-    qtd_taloes = actions.IntegerField(label='Quantidade de Talões')
-
-    class Meta:
-        title = 'Gerar Mais Cartelas'
-        modal = True
-        style = 'primary'
-
-    def submit(self):
-        ultima_cartela = self.objects(Cartela).filter(talao__evento=self.instance).order_by('id').last()
-        self.instance.gerar_cartelas(int(ultima_cartela.talao.numero)+1, int(ultima_cartela.numero)+1, self.get('qtd_taloes'))
-        super().submit()
-
-    def has_permission(self):
-        return True
-
-
-class AtualizarSituacao(actions.Action):
+class AtualizarSituacao(endpoints.Endpoint):
 
     class Meta:
         icon = 'redo'
@@ -243,7 +239,7 @@ class AtualizarSituacao(actions.Action):
         return not self.instance.is_confirmada()
 
 
-class EfetuarPagamentoOnline(actions.Action):
+class EfetuarPagamentoOnline(endpoints.Endpoint):
 
     class Meta:
         icon = 'file-invoice-dollar'

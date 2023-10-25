@@ -18,8 +18,8 @@ api:
     warning: fff5c2
     danger: e52207
     radius: 5px
-  index: bingo.actions.index
-  dashboard: bingo.actions.dashboard
+  index: bingo.endpoints.index
+  dashboard: bingo.endpoints.dashboard
   groups:
     adm: Administrador
     op: Operador
@@ -29,28 +29,28 @@ api:
       search: username
       filters: date_joined__gte, is_superuser, username
       ordering: username
-      actions: list, add, view, edit, delete, api.actions.changepassword, api.actions.changepasswords, api.actions.verifypassword
+      actions: list, add, view, edit, delete, api.endpoints.changepassword, api.endpoints.changepasswords, api.endpoints.verifypassword
       fieldsets:
         dados_gerais: username, first_name, last_name, get_full_name
         dados_acesso: date_joined, is_staff, is_active
         contato: email
       relations:
-        api.actions.userroles:
+        api.endpoints.userroles:
           fields: id, name, scope, model, value, active
           actions: view
       endpoints:
         add:
           fields: first_name, last_name, username
         list:
-          fields: id, username, email, api.actions.userroles
-          actions: add, view, edit, delete, api.actions.changepassword, api.actions.changepasswords
+          fields: id, username, email, api.endpoints.userroles
+          actions: add, view, edit, delete, api.endpoints.changepassword, api.endpoints.changepasswords
           extends:
             active:
               fields: id, username
             inactive:
         view:
-          fields: id, dados_gerais, dados_acesso, api.actions.userroles
-          actions: api.actions.verifypassword, api.actions.changepassword
+          fields: id, dados_gerais, dados_acesso, api.endpoints.userroles
+          actions: api.endpoints.verifypassword, api.endpoints.changepassword
     api.role:
       prefix: roles
       endpoints:
@@ -79,7 +79,7 @@ api:
           filters: talao__evento, talao
           subsets: pendentes_distribuicao, pendentes_pagamento, pagas
           fields: numero, talao, responsavel, posse, realizou_pagamento, meio_pagamento, comissao, get_situacao
-          actions: bingo.actions.prestarconta
+          actions: bingo.endpoints.prestarconta
       endpoints:
         view: dados_gerais, get_cartelas
     bingo.evento:
@@ -98,7 +98,7 @@ api:
           filters: talao, responsavel, posse
           subsets: pendentes_distribuicao, pendentes_pagamento, pagas
           fields: numero, talao, responsavel, posse, realizou_pagamento, meio_pagamento, comissao, get_situacao
-          actions: bingo.actions.distribuir, bingo.actions.informarpossecartela, bingo.actions.devolvercartela, bingo.actions.prestarconta
+          actions: bingo.endpoints.distribuir, bingo.endpoints.informarpossecartela, bingo.endpoints.devolvercartela, bingo.endpoints.prestarconta
       endpoints:
         list:
           requires:
@@ -106,6 +106,7 @@ api:
             op: operadores__cpf
           calendar: data
           fields: nome, data, operadores
+          actions: add, view, edit, delete, bingo.endpoints.gerarcartelas
         view:
           requires:
             adm:
@@ -126,7 +127,7 @@ api:
           requires:
             adm:
     bingo.cartela:
-      actions: bingo.actions.distribuir, bingo.actions.informarpossecartela, bingo.actions.devolvercartela, bingo.actions.prestarconta
+      actions: bingo.endpoints.distribuir, bingo.endpoints.informarpossecartela, bingo.endpoints.devolvercartela, bingo.endpoints.prestarconta
     bingo.compraonline:
       icon: cart-plus
       fieldsets:
@@ -137,7 +138,7 @@ api:
             adm:
             op:
           fields: cpf, nome, telefone, email, data_hora, valor, get_status, get_numeros_cartelas
-          actions: view, bingo.actions.atualizarsituacao, bingo.actions.efetuarpagamentoonline
+          actions: view, bingo.endpoints.atualizarsituacao, bingo.endpoints.efetuarpagamentoonline
         add:
           requires:
             adm:

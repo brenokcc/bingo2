@@ -133,20 +133,6 @@ class Evento(models.Model):
     def get_total_cartelas(self):
         return self.get_cartelas().count()
 
-    def save(self, *args, **kwargs):
-        gerar_cartelas = self.pk is None
-        super().save(*args, **kwargs)
-        if gerar_cartelas:
-            self.gerar_cartelas(qtd_taloes=self.qtd_taloes)
-
-    def gerar_cartelas(self, numero_talao=1, numero_cartela=1, qtd_taloes=10):
-        for i in range(1, qtd_taloes+1):
-            talao = Talao.objects.create(numero=f'{numero_talao}'.rjust(3, '0'), evento=self)
-            for j in range(1, self.qtd_cartela_talao + 1):
-                Cartela.objects.create(numero=f'{numero_cartela}'.rjust(5, '0'), talao=talao)
-                numero_cartela += 1
-            numero_talao += 1
-
     def gerar_cartelas_online(self, numero_cartelas):
         cartelas = []
         talao = Talao.objects.get_or_create(numero='000', evento=self)[0]
