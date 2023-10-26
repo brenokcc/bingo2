@@ -2,6 +2,25 @@ from api import tasks
 from .models import Talao, Cartela
 import time
 
+
+class ExportarCartelasTask(tasks.Task):
+
+    def __init__(self, qs):
+        self.qs = qs
+        super().__init__()
+
+    def run(self):
+        rows = []
+        valor = None
+        rows.append(('Nº da Cartela', 'Talão', 'Responsável', 'Posse', 'Valor da Cartela', 'Valor da Comissão', 'Situação'))
+        for obj in self.iterate(self.qs.order_by('numero')):
+            if valor is None:
+                valor = obj.talao.evento.get_valor_liquido_cartela()
+            rows.append((obj.numero, obj.talao.numero, obj.responsavel.nome if obj.responsavel else '',
+                         obj.posse.nome if obj.posse else '', valor, obj.comissao or '0', obj.get_situacao()['label']))
+        return self.to_csv_file(rows)
+
+
 class GerarCartelas(tasks.Task):
 
     def __init__(self, evento):

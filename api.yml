@@ -98,7 +98,7 @@ api:
           filters: talao, responsavel, posse
           subsets: pendentes_distribuicao, pendentes_pagamento, pagas
           fields: numero, talao, responsavel, posse, realizou_pagamento, meio_pagamento, comissao, get_situacao
-          actions: bingo.endpoints.distribuir, bingo.endpoints.informarpossecartela, bingo.endpoints.devolvercartela, bingo.endpoints.prestarconta, bingo.endpoints.exportarcartelasexcel
+          actions: bingo.endpoints.distribuir, bingo.endpoints.informarpossecartela, bingo.endpoints.devolvercartela, bingo.endpoints.prestarconta, bingo.endpoints.exportarcartelas
       endpoints:
         list:
           requires:

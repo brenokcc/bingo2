@@ -206,7 +206,7 @@ class PrestarConta(endpoints.Endpoint):
         return self.instance.responsavel and self.check_roles('adm', 'op')
 
 
-class ExportarCartelasExcel(endpoints.Endpoint):
+class ExportarCartelas(endpoints.Endpoint):
     class Meta:
         title = 'Exportar para Excel'
         modal = True
@@ -214,14 +214,7 @@ class ExportarCartelasExcel(endpoints.Endpoint):
         target = 'queryset'
 
     def post(self):
-        rows = []
-        valor = None
-        rows.append(('Nº da Cartela', 'Talão', 'Responsável', 'Posse', 'Valor da Cartela', 'Valor da Comissão', 'Situação'))
-        for obj in self.instance.order_by('numero'):
-            if valor is None:
-                valor = obj.talao.evento.get_valor_liquido_cartela()
-            rows.append((obj.numero, obj.talao.numero, obj.responsavel.nome if obj.responsavel else '', obj.posse.nome if obj.posse else '', valor, obj.comissao or '0', obj.get_situacao()['label']))
-        return self.to_csv_file(rows)
+        self.execute(tasks.ExportarCartelasTask(self.instance))
 
     def check_permission(self):
         return True
