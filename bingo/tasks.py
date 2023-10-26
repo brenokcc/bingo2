@@ -1,14 +1,12 @@
 from api import tasks
 from .models import Talao, Cartela
-
+import time
 
 class GerarCartelas(tasks.Task):
 
-    def __init__(self, evento, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.numero_talao = 1
-        self.numero_cartela = 1
+    def __init__(self, evento):
         self.evento = evento
+        super().__init__()
 
     def run(self):
         for i in self.iterate(range(1, self.evento.qtd_taloes+1)):

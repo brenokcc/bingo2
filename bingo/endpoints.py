@@ -8,14 +8,14 @@ from . import tasks
 class AcessoRapido(endpoints.Endpoint):
     def get(self):
         boxes = Boxes(title='Acesso Rápido')
-        if self.check('adm'):
+        if self.check_roles('adm'):
             boxes.append(icon='dollar', label='Meios de Pagamento', url='/api/v1/meiopagamento/')
         boxes.append(icon='users', label='Pessoas', url='/api/v1/pessoa/')
         boxes.append(icon='calendar', label='Eventos', url='/api/v1/evento/')
         boxes.append(icon='cart-plus', label='Compras Online', url='/api/v1/compraonline/')
         return boxes
 
-    def has_permission(self):
+    def check_permission(self):
         return self.user.is_authenticated
 
 
@@ -31,7 +31,7 @@ class RealizarCompraOnline(endpoints.Endpoint):
         icon = 'cart-plus'
         help_text = 'Após o envio do formulário, você será redirecionado para o site do Mercado Pago, onde poderá efetuar o pagamento com total segurança. Após concluir o pagamento, aguarde alguns segundos para que o sistema redirecione você para o sistema novamente.'
 
-    def submit(self):
+    def post(self):
         compra = CompraOnline.objects.create(
             cpf=self.getdata('cpf'), nome=self.getdata('nome'), telefone=self.getdata('telefone'),
             email=self.getdata('email'), numero_cartelas = self.getdata('numero_cartelas')
@@ -39,7 +39,7 @@ class RealizarCompraOnline(endpoints.Endpoint):
         self.redirect(compra.url)
 
 
-    def has_permission(self):
+    def check_permission(self):
         return True
 
 
@@ -57,7 +57,7 @@ class VisualizarCompraOnline(endpoints.Endpoint):
             autoreload=autoreload
         )
 
-    def has_permission(self):
+    def check_permission(self):
         return True
 
 
@@ -73,21 +73,21 @@ class ConsultarCompraOnline(endpoints.Endpoint):
             'cpf', 'nome', 'data_hora', 'valor', 'get_numeros_cartelas', 'get_status'
         )
 
-    def has_permission(self):
+    def check_permission(self):
         return True
 
 
 class Dashboard(endpoints.EndpointSet):
     endpoints = AcessoRapido,
 
-    def has_permission(self):
+    def check_permission(self):
         return self.user.is_authenticated
 
 
 class Index(endpoints.EndpointSet):
     endpoints = ConsultarCompraOnline, RealizarCompraOnline
 
-    def has_permission(self):
+    def check_permission(self):
         return True
 
 
@@ -100,8 +100,8 @@ class GerarCartelas(endpoints.Endpoint):
         self.execute(tasks.GerarCartelas(self.instance))
         self.notify('Cartelas geradas com sucesso')
 
-    def has_permission(self):
-        return self.check('adm') and not self.instance.talao_set.exists()
+    def check_permission(self):
+        return self.check_roles('adm') and not self.instance.talao_set.exists()
 
 
 class Distribuir(endpoints.Endpoint):
@@ -116,13 +116,13 @@ class Distribuir(endpoints.Endpoint):
         fields = 'responsavel', 'aplicar_talao'
         help_text = 'Informe a pessoa que ficará responsável pela cartela.'
 
-    def submit(self):
+    def post(self):
         self.instance.talao.cartela_set.update(
             responsavel=self.instance.responsavel
         ) if self.getdata('aplicar_talao') else super().submit()
 
-    def has_permission(self):
-        return self.instance.responsavel is None and self.check('adm', 'op')
+    def check_permission(self):
+        return self.instance.responsavel is None and self.check_roles('adm', 'op')
 
 
 class DevolverCartela(endpoints.Endpoint):
@@ -134,7 +134,7 @@ class DevolverCartela(endpoints.Endpoint):
         style = 'danger'
         fields = 'aplicar_talao',
 
-    def submit(self):
+    def post(self):
         self.instance.responsavel=None
         self.instance.posse = None
         self.instance.realizou_pagamento = None
@@ -145,8 +145,8 @@ class DevolverCartela(endpoints.Endpoint):
             responsavel=None, posse=None, realizou_pagamento=None, meio_pagamento=None, comissao=0
         ) if self.getdata('aplicar_talao') else super().submit()
 
-    def has_permission(self):
-        return self.instance.responsavel and self.instance.realizou_pagamento is None and self.check('adm', 'op')
+    def check_permission(self):
+        return self.instance.responsavel and self.instance.realizou_pagamento is None and self.check_roles('adm', 'op')
 
 
 class InformarPosseCartela(endpoints.Endpoint):
@@ -159,13 +159,13 @@ class InformarPosseCartela(endpoints.Endpoint):
         model = Cartela
         fields = 'posse', 'aplicar_talao'
 
-    def submit(self):
+    def post(self):
         self.instance.talao.cartela_set.update(
             posse=self.instance.posse
         ) if self.getdata('aplicar_talao') else super().submit()
 
-    def has_permission(self):
-        return self.instance.responsavel and self.instance.realizou_pagamento is None and self.check('adm', 'op')
+    def check_permission(self):
+        return self.instance.responsavel and self.instance.realizou_pagamento is None and self.check_roles('adm', 'op')
 
 
 class PrestarConta(endpoints.Endpoint):
@@ -178,7 +178,7 @@ class PrestarConta(endpoints.Endpoint):
         model = Cartela
         fields = 'realizou_pagamento', 'meio_pagamento', 'comissao', 'aplicar_talao',
 
-    def submit(self):
+    def post(self):
         if not self.getdata('realizou_pagamento'):
             self.instance.meio_pagamento = None
             self.instance.comissao = 0
@@ -189,7 +189,7 @@ class PrestarConta(endpoints.Endpoint):
         ) if self.getdata('aplicar_talao') else super().submit()
 
     def on_realizou_pagamento_change(self, realizou_pagamento=None, **kwargs):
-        self.show('comissao', 'meio_pagamento') if realizou_pagamento else self.hide('comissao', 'meio_pagamento')
+        self.enable('comissao', 'meio_pagamento') if realizou_pagamento else self.disable('comissao', 'meio_pagamento')
 
     def validate_comissao(self, comissao):
         if self.getdata('realizou_pagamento') is None:
@@ -202,8 +202,8 @@ class PrestarConta(endpoints.Endpoint):
             return self.getdata('comissao')
         return 0
 
-    def has_permission(self):
-        return self.instance.responsavel and self.check('adm', 'op')
+    def check_permission(self):
+        return self.instance.responsavel and self.check_roles('adm', 'op')
 
 
 class ExportarCartelasExcel(endpoints.Endpoint):
@@ -211,18 +211,19 @@ class ExportarCartelasExcel(endpoints.Endpoint):
         title = 'Exportar para Excel'
         modal = True
         style = 'primary'
+        target = 'queryset'
 
-    def submit(self):
+    def post(self):
         rows = []
         valor = None
         rows.append(('Nº da Cartela', 'Talão', 'Responsável', 'Posse', 'Valor da Cartela', 'Valor da Comissão', 'Situação'))
-        for obj in self.get_instances().order_by('numero'):
+        for obj in self.instance.order_by('numero'):
             if valor is None:
                 valor = obj.talao.evento.get_valor_liquido_cartela()
-            rows.append((obj.numero, obj.talao.numero, obj.responsavel.nome if obj.responsavel else '', obj.posse.nome if obj.posse else '', valor, obj.comissao or '0', obj.get_situacao()[1]))
-        return XlsResponse([('Cartelas', rows)])
+            rows.append((obj.numero, obj.talao.numero, obj.responsavel.nome if obj.responsavel else '', obj.posse.nome if obj.posse else '', valor, obj.comissao or '0', obj.get_situacao()['label']))
+        return self.to_csv_file(rows)
 
-    def has_permission(self):
+    def check_permission(self):
         return True
 
 
@@ -232,10 +233,10 @@ class AtualizarSituacao(endpoints.Endpoint):
         icon = 'redo'
         title = 'Atualizar Situação'
 
-    def submit(self):
+    def post(self):
         self.instance.atualizar_situacao()
 
-    def has_permission(self):
+    def check_permission(self):
         return not self.instance.is_confirmada()
 
 
@@ -246,8 +247,8 @@ class EfetuarPagamentoOnline(endpoints.Endpoint):
         title = 'Efetuar Pagamento'
         help_text = 'Você será redirecionado para o site do Mercado Pago.'
 
-    def submit(self):
+    def post(self):
         self.redirect(self.instance.url)
 
-    def has_permission(self):
+    def check_permission(self):
         return not self.instance.is_confirmada()
