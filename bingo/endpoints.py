@@ -80,6 +80,9 @@ class ConsultarCompraOnline(endpoints.Endpoint):
 class Dashboard(endpoints.EndpointSet):
     endpoints = AcessoRapido,
 
+    class Meta:
+        icon = 'home'
+
     def check_permission(self):
         return self.user.is_authenticated
 

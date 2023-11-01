@@ -58,6 +58,7 @@ api:
           fields: id, name
           actions: view, edit
     bingo.meiopagamento:
+      icon: dollar
       requires:
         adm:
     bingo.administrador:
@@ -68,6 +69,7 @@ api:
       requires:
         adm:
     bingo.pessoa:
+      filters: cpf__userrole
       requires:
         adm:
         op:
@@ -149,3 +151,13 @@ api:
             op:
           fields: dados_gerais, get_link_pagamento, get_cartelas
 
+  menu:
+    - bingo.endpoints.dashboard
+    - Administração [fill-drip]:
+        - api.endpoints.icons
+        - Cadastros Gerais:
+            - bingo.administrador
+            - bingo.meiopagamento
+    - Operação:
+        - Eventos:
+            - bingo.evento
