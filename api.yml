@@ -30,14 +30,6 @@ api:
       filters: date_joined__gte, is_superuser, username
       ordering: username
       actions: list, add, view, edit, delete, api.endpoints.changepassword, api.endpoints.changepasswords, api.endpoints.verifypassword
-      fieldsets:
-        dados_gerais: username, first_name, last_name, get_full_name
-        dados_acesso: date_joined, is_staff, is_active
-        contato: email
-      relations:
-        api.endpoints.userroles:
-          fields: id, name, scope, model, value, active
-          actions: view
       endpoints:
         add:
           fields: first_name, last_name, username
@@ -49,8 +41,13 @@ api:
               fields: id, username
             inactive:
         view:
-          fields: id, dados_gerais, dados_acesso, api.endpoints.userroles
-          actions: api.endpoints.verifypassword, api.endpoints.changepassword
+          fieldsets:
+            dados_gerais: username get_full_name, api.endpoints.userroles
+            dados_acesso:
+              actions: api.endpoints.verifypassword
+              fields: date_joined is_staff is_active
+            contato: email
+          actions: api.endpoints.changepassword
     api.role:
       prefix: roles
       endpoints:
@@ -73,34 +70,21 @@ api:
       requires:
         adm:
         op:
-      fieldsets:
-        dados_gerais: nome, cpf, telefone, observacao
-      relations:
-        get_cartelas:
-          search: numero
-          filters: talao__evento, talao
-          subsets: pendentes_distribuicao, pendentes_pagamento, pagas
-          fields: numero, talao, responsavel, posse, realizou_pagamento, meio_pagamento, comissao, get_situacao
-          actions: bingo.endpoints.prestarconta
       endpoints:
-        view: dados_gerais, get_cartelas
+        view:
+          fieldsets:
+            dados_gerais: nome, cpf telefone, observacao
+            get_cartelas:
+              search: numero
+              filters: talao__evento, talao
+              subsets: pendentes_distribuicao, pendentes_pagamento, pagas
+              fields: numero, talao, responsavel, posse, realizou_pagamento, meio_pagamento, comissao, get_situacao
+              actions: bingo.endpoints.prestarconta
     bingo.evento:
       roles:
         op:
           username: operadores__cpf
           email: operadores__email
-      fieldsets:
-        dados_gerais: nome, data
-        configuracao: qtd_cartela_talao, qtd_taloes, valor_venda_cartela, valor_comissao_cartela
-        resumo_financeiro: get_total_cartelas_distribuidas, get_receita_esperada, get_valor_recebido_venda, get_valor_recebido_doacao, get_valor_receber, get_valor_perdido, get_receita_final
-      relations:
-        get_cartelas:
-          search: numero
-          aggregations: get_valor_pago, get_valor_pendente_pagamento, get_valor_nao_pago
-          filters: talao, responsavel, posse
-          subsets: pendentes_distribuicao, pendentes_pagamento, pagas
-          fields: numero, talao, responsavel, posse, realizou_pagamento, meio_pagamento, comissao, get_situacao
-          actions: bingo.endpoints.distribuir, bingo.endpoints.informarpossecartela, bingo.endpoints.devolvercartela, bingo.endpoints.prestarconta, bingo.endpoints.exportarcartelas
       endpoints:
         list:
           requires:
@@ -113,18 +97,33 @@ api:
           requires:
             adm:
             op: operadores__cpf
-          fields: dados_gerais, configuracao, get_percentual_cartela_distribuida, get_percentual_cartela_paga, get_cartelas, resumo_financeiro
+          # fields: dados_gerais, configuracao, monitoramento, get_cartelas, resumo_financeiro
+          fieldsets:
+            dados_gerais: nome data
+            configuracao: qtd_cartela_talao qtd_taloes, valor_venda_cartela valor_comissao_cartela
+            monitoramento: get_percentual_cartela_distribuida get_percentual_cartela_paga
+            get_cartelas:
+              search: numero
+              aggregations: get_valor_pago, get_valor_pendente_pagamento, get_valor_nao_pago
+              filters: talao, responsavel, posse
+              subsets: pendentes_distribuicao, pendentes_pagamento, pagas
+              fields: numero, talao, responsavel, posse, realizou_pagamento, meio_pagamento, comissao, get_situacao
+              actions: bingo.endpoints.distribuir, bingo.endpoints.informarpossecartela, bingo.endpoints.devolvercartela, bingo.endpoints.prestarconta, bingo.endpoints.exportarcartelas
+            resumo_financeiro: get_total_cartelas_distribuidas get_receita_esperada, get_valor_recebido_venda get_valor_recebido_doacao, get_valor_receber get_valor_perdido, get_receita_final
         add:
           requires:
             adm:
           fieldsets:
-            dados_gerais: nome, data
-            detalhamento: qtd_taloes, qtd_cartela_talao, valor_venda_cartela, valor_comissao_cartela
+            dados_gerais:
+              fields: nome data
+              requires:
+                adm:
+                operador:
+            detalhamento: qtd_taloes qtd_cartela_talao, valor_venda_cartela valor_comissao_cartela
             gerenciamento: operadores
         edit:
           requires:
             adm:
-          fields: nome, data, operadores
         delete:
           requires:
             adm:
@@ -132,8 +131,6 @@ api:
       actions: bingo.endpoints.distribuir, bingo.endpoints.informarpossecartela, bingo.endpoints.devolvercartela, bingo.endpoints.prestarconta
     bingo.compraonline:
       icon: cart-plus
-      fieldsets:
-        dados_gerais: cpf, nome, telefone, email, data_hora, valor, uuid, get_status
       endpoints:
         list:
           requires:
@@ -149,7 +146,9 @@ api:
           requires:
             adm:
             op:
-          fields: dados_gerais, get_link_pagamento, get_cartelas
+          fieldsets:
+            dados_gerais: cpf nome, telefone email, data_hora valor, uuid get_status, get_link_pagamento
+            get_cartelas: id, meio_pagamento, numero
 
   menu:
     - bingo.endpoints.dashboard

@@ -30,6 +30,7 @@ class RealizarCompraOnline(endpoints.Endpoint):
         title = 'Realizar Compra Online'
         icon = 'cart-plus'
         help_text = 'Após o envio do formulário, você será redirecionado para o site do Mercado Pago, onde poderá efetuar o pagamento com total segurança. Após concluir o pagamento, aguarde alguns segundos para que o sistema redirecione você para o sistema novamente.'
+        fieldsets = {'': 'nome cpf, email, telefone numero_cartelas'}
 
     def post(self):
         compra = CompraOnline.objects.create(
@@ -112,6 +113,7 @@ class Distribuir(endpoints.Endpoint):
     aplicar_talao = endpoints.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
 
     class Meta:
+        target = 'instance'
         title = 'Distribuir'
         modal = True
         style = 'secondary'
@@ -122,7 +124,7 @@ class Distribuir(endpoints.Endpoint):
     def post(self):
         self.instance.talao.cartela_set.update(
             responsavel=self.instance.responsavel
-        ) if self.getdata('aplicar_talao') else super().submit()
+        ) if self.getdata('aplicar_talao') else super().post()
 
     def check_permission(self):
         return self.instance.responsavel is None and self.check_roles('adm', 'op')
@@ -132,6 +134,7 @@ class DevolverCartela(endpoints.Endpoint):
     aplicar_talao = endpoints.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
 
     class Meta:
+        target = 'instance'
         title = 'Devolver'
         modal = True
         style = 'danger'
@@ -146,7 +149,7 @@ class DevolverCartela(endpoints.Endpoint):
         self.instance.save()
         self.instance.talao.cartela_set.update(
             responsavel=None, posse=None, realizou_pagamento=None, meio_pagamento=None, comissao=0
-        ) if self.getdata('aplicar_talao') else super().submit()
+        ) if self.getdata('aplicar_talao') else super().post()
 
     def check_permission(self):
         return self.instance.responsavel and self.instance.realizou_pagamento is None and self.check_roles('adm', 'op')
@@ -156,6 +159,7 @@ class InformarPosseCartela(endpoints.Endpoint):
     aplicar_talao = endpoints.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
 
     class Meta:
+        target = 'instance'
         title = 'Repassar'
         modal = True
         style = 'secondary'
@@ -165,7 +169,7 @@ class InformarPosseCartela(endpoints.Endpoint):
     def post(self):
         self.instance.talao.cartela_set.update(
             posse=self.instance.posse
-        ) if self.getdata('aplicar_talao') else super().submit()
+        ) if self.getdata('aplicar_talao') else super().post()
 
     def check_permission(self):
         return self.instance.responsavel and self.instance.realizou_pagamento is None and self.check_roles('adm', 'op')
@@ -175,6 +179,7 @@ class PrestarConta(endpoints.Endpoint):
     aplicar_talao = endpoints.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
 
     class Meta:
+        target = 'instance'
         title = 'Prestar Contas'
         modal = True
         style = 'success'
@@ -189,7 +194,7 @@ class PrestarConta(endpoints.Endpoint):
             realizou_pagamento=self.instance.realizou_pagamento,
             meio_pagamento=self.instance.meio_pagamento,
             comissao=self.instance.comissao
-        ) if self.getdata('aplicar_talao') else super().submit()
+        ) if self.getdata('aplicar_talao') else super().post()
 
     def on_realizou_pagamento_change(self, realizou_pagamento=None, **kwargs):
         self.enable('comissao', 'meio_pagamento') if realizou_pagamento else self.disable('comissao', 'meio_pagamento')
