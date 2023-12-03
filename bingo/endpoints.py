@@ -110,7 +110,8 @@ class GerarCartelas(endpoints.Endpoint):
 
 class Distribuir(endpoints.Endpoint):
 
-    aplicar_talao = endpoints.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
+    numero_inicial = endpoints.IntegerField(label='Número Inicial', required=False)
+    numero_final = endpoints.IntegerField(label='Número Final', required=False)
 
     class Meta:
         target = 'instance'
@@ -118,27 +119,39 @@ class Distribuir(endpoints.Endpoint):
         modal = True
         style = 'secondary'
         model = Cartela
-        fields = 'responsavel', 'aplicar_talao'
-        help_text = 'Informe a pessoa que ficará responsável pela cartela.'
+        fields = 'responsavel', 'numero_inicial', 'numero_final'
+        fieldsets = {
+            'Distribuição Individual': ('responsavel',),
+            'Distribuição em Lote': ((('numero_inicial', 'numero_final'),)),
+        }
 
     def post(self):
-        self.instance.talao.cartela_set.update(
+        numeros = [str(n).rjust(5, '0') for n in range(
+            self.getdata('numero_inicial') or 0,
+            ((self.getdata('numero_final') or 0) + 1)
+        )]
+        qs = Cartela.objects.filter(talao__evento=self.instance.talao.evento).filter(numero__in=numeros)
+        qs.update(
             responsavel=self.instance.responsavel
-        ) if self.getdata('aplicar_talao') else super().post()
+        ) if numeros else super().post()
 
     def check_permission(self):
         return self.instance.responsavel is None and self.check_roles('adm', 'op')
 
 
 class DevolverCartela(endpoints.Endpoint):
-    aplicar_talao = endpoints.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
+    numero_inicial = endpoints.IntegerField(label='Número Inicial', required=False)
+    numero_final = endpoints.IntegerField(label='Número Final', required=False)
 
     class Meta:
         target = 'instance'
         title = 'Devolver'
         modal = True
         style = 'danger'
-        fields = 'aplicar_talao',
+        fields = 'numero_inicial', 'numero_final',
+        fieldsets = {
+            'Devolução em Lote': ((('numero_inicial', 'numero_final'),)),
+        }
 
     def post(self):
         self.instance.responsavel=None
@@ -147,16 +160,22 @@ class DevolverCartela(endpoints.Endpoint):
         self.instance.meio_pagamento = None
         self.instance.comissao = 0
         self.instance.save()
-        self.instance.talao.cartela_set.update(
+        numeros = [str(n).rjust(5, '0') for n in range(
+            self.getdata('numero_inicial') or 0,
+            ((self.getdata('numero_final') or 0) + 1)
+        )]
+        qs = Cartela.objects.filter(talao__evento=self.instance.talao.evento).filter(numero__in=numeros)
+        qs.update(
             responsavel=None, posse=None, realizou_pagamento=None, meio_pagamento=None, comissao=0
-        ) if self.getdata('aplicar_talao') else super().post()
+        ) if numeros else super().post()
 
     def check_permission(self):
-        return self.instance.responsavel and self.instance.realizou_pagamento is None and self.check_roles('adm', 'op')
+        return self.instance.responsavel and not self.instance.realizou_pagamento and self.check_roles('adm', 'op')
 
 
 class InformarPosseCartela(endpoints.Endpoint):
-    aplicar_talao = endpoints.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
+    numero_inicial = endpoints.IntegerField(label='Número Inicial', required=False)
+    numero_final = endpoints.IntegerField(label='Número Final', required=False)
 
     class Meta:
         target = 'instance'
@@ -164,37 +183,56 @@ class InformarPosseCartela(endpoints.Endpoint):
         modal = True
         style = 'secondary'
         model = Cartela
-        fields = 'posse', 'aplicar_talao'
+        fields = 'posse', 'numero_inicial', 'numero_final'
+        fieldsets = {
+            'Repasse Individual': ('posse',),
+            'Repasse em Lote': ((('numero_inicial', 'numero_final'),)),
+        }
 
     def post(self):
-        self.instance.talao.cartela_set.update(
+        numeros = [str(n).rjust(5, '0') for n in range(
+            self.getdata('numero_inicial') or 0,
+            ((self.getdata('numero_final') or 0) + 1)
+        )]
+        qs = Cartela.objects.filter(talao__evento=self.instance.talao.evento).filter(numero__in=numeros)
+        qs.update(
             posse=self.instance.posse
-        ) if self.getdata('aplicar_talao') else super().post()
+        ) if numeros else super().post()
 
     def check_permission(self):
         return self.instance.responsavel and self.instance.realizou_pagamento is None and self.check_roles('adm', 'op')
 
 
 class PrestarConta(endpoints.Endpoint):
-    aplicar_talao = endpoints.BooleanField(label='Aplicar em todo o talão?', initial=False, required=False)
+    numero_inicial = endpoints.IntegerField(label='Número Inicial', required=False)
+    numero_final = endpoints.IntegerField(label='Número Final', required=False)
 
     class Meta:
         target = 'instance'
         title = 'Prestar Contas'
         modal = True
         style = 'success'
-        model = Cartela
-        fields = 'realizou_pagamento', 'meio_pagamento', 'comissao', 'aplicar_talao',
+        model = 'bingo.cartela'
+        fields = 'realizou_pagamento', 'meio_pagamento', 'comissao', 'numero_inicial', 'numero_final',
+        fieldsets = {
+            'Prestaçã de Conta Individual': ('realizou_pagamento', 'meio_pagamento', 'comissao'),
+            'Prestaçã de Conta em Lote': ((('numero_inicial', 'numero_final'),)),
+        }
 
     def post(self):
         if not self.getdata('realizou_pagamento'):
             self.instance.meio_pagamento = None
             self.instance.comissao = 0
-        self.instance.talao.cartela_set.update(
+        numeros = [str(n).rjust(5, '0') for n in range(
+            self.getdata('numero_inicial') or 0,
+            ((self.getdata('numero_final') or 0) + 1)
+        )]
+        qs = Cartela.objects.filter(talao__evento=self.instance.talao.evento).filter(numero__in=numeros)
+        qs.update(
             realizou_pagamento=self.instance.realizou_pagamento,
             meio_pagamento=self.instance.meio_pagamento,
             comissao=self.instance.comissao
-        ) if self.getdata('aplicar_talao') else super().post()
+        ) if numeros else super().post()
 
     def on_realizou_pagamento_change(self, realizou_pagamento=None, **kwargs):
         self.enable('comissao', 'meio_pagamento') if realizou_pagamento else self.disable('comissao', 'meio_pagamento')

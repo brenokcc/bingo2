@@ -1,6 +1,6 @@
 import os
 from django.db import models
-from api.components import Progress, Status, QrCode, Link
+from api.components import Progress, Status, QrCode, Link, Map, Steps
 from .mercadopago import MercadoPago
 from uuid import uuid1
 
@@ -48,13 +48,25 @@ class Pessoa(models.Model):
         qs = Cartela.objects
         return qs.filter(responsavel=self) | qs.filter(posse=self)
 
+    def get_mapa(self):
+        return Map(-5.8496847,-35.2038551)
+
+    def get_steps(self):
+        steps = Steps('check')
+        steps.append('Etapa 01', True)
+        steps.append('Etapa 02', True)
+        steps.append('Etapa 03', False)
+        steps.append('Etapa 04', False)
+        steps.append('Etapa 05', False)
+        return steps
+
 
 class AdministradorManager(models.Manager):
     pass
 
 
 class Administrador(models.Model):
-    pessoa = models.ForeignKey(Pessoa, verbose_name='Pessoa', on_delete=models.CASCADE)
+    pessoa = models.ForeignKey(Pessoa, verbose_name='Pessoa', on_delete=models.CASCADE, addable=True)
 
     objects = AdministradorManager()
 
