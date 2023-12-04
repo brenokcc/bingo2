@@ -28,7 +28,9 @@ class GerarCartelas(tasks.Task):
         super().__init__()
 
     def run(self):
+        numero = 1
         for i in self.iterate(range(1, self.evento.qtd_taloes+1)):
             talao = Talao.objects.create(numero=f'{i}'.rjust(3, '0'), evento=self.evento)
             for j in range(1, self.evento.qtd_cartela_talao + 1):
-                Cartela.objects.create(numero=f'{j}'.rjust(5, '0'), talao=talao)
+                Cartela.objects.create(numero=f'{numero}'.rjust(5, '0'), talao=talao)
+                numero += 1

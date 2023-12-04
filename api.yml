@@ -84,7 +84,6 @@ api:
       roles:
         op:
           username: operadores__cpf
-          email: operadores__email
       endpoints:
         list:
           requires:
